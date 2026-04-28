@@ -38,4 +38,3 @@ public class RuntimeCompilationError
     /// <summary>1-based column number in the source file (0 = unknown).</summary>
     public int Column { get; set; }
 }
-

@@ -20,4 +20,3 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
         }, null, 300, Timeout.Infinite);
     }
 }
-

@@ -29,8 +29,14 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
             if (fileName.StartsWith("System.") || fileName.StartsWith("Microsoft.") ||
                 fileName == "mscorlib.dll" || fileName == "netstandard.dll")
             {
-                try { _references.Add(MetadataReference.CreateFromFile(path)); }
-                catch { /* skip inaccessible assemblies */ }
+                try
+                {
+                    _references.Add(MetadataReference.CreateFromFile(path));
+                }
+                catch
+                {
+                    /* skip inaccessible assemblies */
+                }
             }
         }
     }
@@ -42,4 +48,3 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
         protected override Assembly? Load(AssemblyName assemblyName) => null;
     }
 }
-

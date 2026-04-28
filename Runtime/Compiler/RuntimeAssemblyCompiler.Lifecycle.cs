@@ -36,7 +36,9 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
     /// Domain hook invoked from <see cref="Dispose"/> after debounce/watchers/load context are torn down.
     /// Default does nothing; shell compiler overrides to clean up the temp Razor build directory.
     /// </summary>
-    protected virtual void OnDispose() { }
+    protected virtual void OnDispose()
+    {
+    }
 
     /// <summary>Disposes the debounce timer, every watcher, and the current load context.</summary>
     public void Dispose()
@@ -47,9 +49,9 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
             w.EnableRaisingEvents = false;
             w.Dispose();
         }
+
         _watchers.Clear();
         UnloadCurrent();
         OnDispose();
     }
 }
-

@@ -61,7 +61,8 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
                     // Razor build failed - fall back to Roslyn for .cs-only so pure-C# shells survive.
                     var razorErrors = result.Errors.ToList();
                     result.Errors.Clear();
-                    result.Warnings.Add($"Razor build failed ({razorErrors.Count} error(s)) - falling back to C#-only compilation.");
+                    result.Warnings.Add(
+                        $"Razor build failed ({razorErrors.Count} error(s)) - falling back to C#-only compilation.");
                     foreach (var err in razorErrors)
                         result.Warnings.Add($"  Razor: {err.FileName}({err.Line},{err.Column}): {err.Message}");
 
@@ -92,6 +93,7 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
                     ? $"Compiled {totalFiles} file(s) with Razor support (gen {_generation})."
                     : $"Compiled {totalFiles} file(s) successfully (gen {_generation}).";
             }
+
             return result;
         }
     }
@@ -179,4 +181,3 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
         return assembly;
     }
 }
-

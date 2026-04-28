@@ -121,6 +121,7 @@ public sealed class Assets<T> : IDisposable
             (kv.Value as IDisposable)?.Dispose();
             HandleRefCounts.Remove(kv.Key);
         }
+
         _storage.Clear();
     }
 }

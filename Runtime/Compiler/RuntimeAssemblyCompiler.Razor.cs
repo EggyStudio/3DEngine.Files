@@ -73,6 +73,7 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
                         Message = $"Build failed (exit code {exitCode}):\n{stderr}",
                     });
                 }
+
                 result.Success = false;
                 result.Message = $"Razor build failed with {result.Errors.Count} error(s).";
                 return null;
@@ -147,6 +148,7 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
                 sb.AppendLine($"      <HintPath>{refPath}</HintPath>");
                 sb.AppendLine("    </Reference>");
             }
+
             sb.AppendLine("  </ItemGroup>");
         }
 
@@ -225,7 +227,7 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
             if (fullPath.StartsWith(fullDir, StringComparison.OrdinalIgnoreCase))
                 return fullPath[(fullDir.Length + 1)..];
         }
+
         return Path.GetFileName(filePath);
     }
 }
-

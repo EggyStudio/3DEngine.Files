@@ -24,6 +24,7 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
             _references.Add(MetadataReference.CreateFromFile(location));
             _userAssemblyPaths.Add(location);
         }
+
         return this;
     }
 
@@ -34,4 +35,3 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
         return this;
     }
 }
-

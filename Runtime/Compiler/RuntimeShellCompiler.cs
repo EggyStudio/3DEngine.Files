@@ -47,10 +47,18 @@ public sealed class RuntimeShellCompiler : RuntimeAssemblyCompiler<ShellCompilat
     }
 
     /// <summary>Fluent <see cref="RuntimeAssemblyCompiler{TResult}.WatchDirectory"/> typed for chaining.</summary>
-    public new RuntimeShellCompiler WatchDirectory(string path) { base.WatchDirectory(path); return this; }
+    public new RuntimeShellCompiler WatchDirectory(string path)
+    {
+        base.WatchDirectory(path);
+        return this;
+    }
 
     /// <summary>Fluent <see cref="RuntimeAssemblyCompiler{TResult}.AddReference(Assembly)"/> typed for chaining.</summary>
-    public new RuntimeShellCompiler AddReference(Assembly assembly) { base.AddReference(assembly); return this; }
+    public new RuntimeShellCompiler AddReference(Assembly assembly)
+    {
+        base.AddReference(assembly);
+        return this;
+    }
 
     /// <inheritdoc />
     protected override void OnNoSourceFiles(ShellCompilationResult result)
@@ -62,7 +70,8 @@ public sealed class RuntimeShellCompiler : RuntimeAssemblyCompiler<ShellCompilat
     }
 
     /// <inheritdoc />
-    protected override void OnAssemblyLoaded(Assembly assembly, IReadOnlyList<string> cssFiles, ShellCompilationResult result)
+    protected override void OnAssemblyLoaded(Assembly assembly, IReadOnlyList<string> cssFiles,
+        ShellCompilationResult result)
     {
         var (builders, panelComponents) = DiscoverShell(assembly, result);
 
@@ -96,8 +105,14 @@ public sealed class RuntimeShellCompiler : RuntimeAssemblyCompiler<ShellCompilat
     {
         if (_razorProjectDir != null && Directory.Exists(_razorProjectDir))
         {
-            try { Directory.Delete(_razorProjectDir, recursive: true); }
-            catch { /* best-effort cleanup */ }
+            try
+            {
+                Directory.Delete(_razorProjectDir, recursive: true);
+            }
+            catch
+            {
+                /* best-effort cleanup */
+            }
         }
     }
 
@@ -107,7 +122,7 @@ public sealed class RuntimeShellCompiler : RuntimeAssemblyCompiler<ShellCompilat
     /// <see cref="EditorPanelAttribute"/>.
     /// </summary>
     private static (IReadOnlyList<IEditorShellBuilder> Builders,
-                    IReadOnlyList<(EditorPanelAttribute Attr, Type Type)> PanelComponents)
+        IReadOnlyList<(EditorPanelAttribute Attr, Type Type)> PanelComponents)
         DiscoverShell(Assembly assembly, ShellCompilationResult result)
     {
         var builders = new List<IEditorShellBuilder>();
@@ -138,4 +153,3 @@ public sealed class RuntimeShellCompiler : RuntimeAssemblyCompiler<ShellCompilat
         return (builders, panelComponents);
     }
 }
-

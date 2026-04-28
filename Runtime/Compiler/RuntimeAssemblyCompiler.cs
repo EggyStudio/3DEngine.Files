@@ -120,5 +120,3 @@ public abstract partial class RuntimeAssemblyCompiler<TResult> : IDisposable
     /// <returns>The compilation to actually emit (may include generator outputs).</returns>
     protected virtual CSharpCompilation RunGenerators(CSharpCompilation compilation, TResult result) => compilation;
 }
-
-
