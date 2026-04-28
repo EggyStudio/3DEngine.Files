@@ -1,44 +1,7 @@
+using Engine.Files.Compiler;
 namespace Editor.Shell;
-
-/// <summary>Result of a shell script compilation attempt.</summary>
-/// <remarks>
-/// Produced by <see cref="RuntimeShellCompiler"/> after each compilation cycle. Contains
-/// success/failure status, error details with source locations, warnings, and the list
-/// of files that were compiled.
-/// </remarks>
-/// <seealso cref="RuntimeShellCompiler"/>
-/// <seealso cref="ShellCompilationError"/>
-public sealed class ShellCompilationResult
-{
-    /// <summary>Whether the compilation succeeded without errors.</summary>
-    public bool Success { get; set; }
-
-    /// <summary>Human-readable summary message (e.g. "Compiled 3 file(s) successfully (gen 2).").</summary>
-    public string Message { get; set; } = string.Empty;
-
-    /// <summary>File names (without path) that were included in the compilation.</summary>
-    public string[] Files { get; set; } = [];
-
-    /// <summary>Compilation errors with source file location information.</summary>
-    public List<ShellCompilationError> Errors { get; set; } = [];
-
-    /// <summary>Non-fatal warnings (e.g. builder instantiation failures).</summary>
-    public List<string> Warnings { get; set; } = [];
-}
-
-/// <summary>A single compilation error with location info.</summary>
-/// <seealso cref="ShellCompilationResult"/>
-public sealed class ShellCompilationError
-{
-    /// <summary>Source file name (without path) where the error occurred.</summary>
-    public string FileName { get; set; } = string.Empty;
-
-    /// <summary>Error message from the compiler diagnostic.</summary>
-    public string Message { get; set; } = string.Empty;
-
-    /// <summary>1-based line number in the source file.</summary>
-    public int Line { get; set; }
-
-    /// <summary>1-based column number in the source file.</summary>
-    public int Column { get; set; }
-}
+/// <summary>Result of a shell script compilation cycle (extends <see cref="RuntimeCompilationResult"/>).</summary>
+/// <remarks>Currently no shell-specific fields; the typed alias keeps the existing public API stable.</remarks>
+public sealed class ShellCompilationResult : RuntimeCompilationResult;
+/// <summary>A shell-script compilation error (extends <see cref="RuntimeCompilationError"/>).</summary>
+public sealed class ShellCompilationError : RuntimeCompilationError;

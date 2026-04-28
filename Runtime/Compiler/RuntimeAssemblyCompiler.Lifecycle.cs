@@ -1,14 +1,10 @@
-namespace Editor.Shell;
+namespace Engine.Files.Compiler;
 
-public sealed partial class RuntimeShellCompiler
+public abstract partial class RuntimeAssemblyCompiler<TResult>
 {
-    /// <summary>
-    /// Performs an initial compilation and starts file watchers for <c>.cs</c>,
-    /// <c>.razor</c>, and <c>.css</c> files in all configured directories.
-    /// Call once after configuration.
-    /// </summary>
+    /// <summary>Performs the initial compilation and starts file watchers across configured directories.</summary>
     /// <returns>The result of the initial compilation.</returns>
-    public ShellCompilationResult Start()
+    public TResult Start()
     {
         var result = CompileAndLoad();
 
@@ -20,7 +16,7 @@ public sealed partial class RuntimeShellCompiler
                 {
                     NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.CreationTime,
                     IncludeSubdirectories = true,
-                    EnableRaisingEvents = true
+                    EnableRaisingEvents = true,
                 };
                 watcher.Changed += OnFileChanged;
                 watcher.Created += OnFileChanged;
@@ -33,11 +29,16 @@ public sealed partial class RuntimeShellCompiler
         return result;
     }
 
-    /// <summary>Manually triggers a recompilation.</summary>
-    /// <returns>The result of the recompilation.</returns>
-    public ShellCompilationResult Recompile() => CompileAndLoad();
+    /// <summary>Manually triggers an immediate recompile (synchronous, bypasses debounce).</summary>
+    public TResult Recompile() => CompileAndLoad();
 
-    /// <summary>Disposes the debounce timer, file watchers, and the current script load context.</summary>
+    /// <summary>
+    /// Domain hook invoked from <see cref="Dispose"/> after debounce/watchers/load context are torn down.
+    /// Default does nothing; shell compiler overrides to clean up the temp Razor build directory.
+    /// </summary>
+    protected virtual void OnDispose() { }
+
+    /// <summary>Disposes the debounce timer, every watcher, and the current load context.</summary>
     public void Dispose()
     {
         _debounceTimer?.Dispose();
@@ -48,12 +49,7 @@ public sealed partial class RuntimeShellCompiler
         }
         _watchers.Clear();
         UnloadCurrent();
-
-        // Clean up temp Razor build directory
-        if (_razorProjectDir != null && Directory.Exists(_razorProjectDir))
-        {
-            try { Directory.Delete(_razorProjectDir, recursive: true); }
-            catch { /* best effort cleanup */ }
-        }
+        OnDispose();
     }
 }
+

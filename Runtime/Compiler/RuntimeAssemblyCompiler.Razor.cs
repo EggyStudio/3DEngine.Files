@@ -1,31 +1,35 @@
 using System.Diagnostics;
-using System.Reflection;
 using System.Text;
 
-namespace Editor.Shell;
+namespace Engine.Files.Compiler;
 
-public sealed partial class RuntimeShellCompiler
+public abstract partial class RuntimeAssemblyCompiler<TResult>
 {
-    private string? _razorProjectDir;
+    /// <summary>Temporary directory used for the Razor SDK csproj across compile cycles.</summary>
+    protected string? _razorProjectDir;
+
+    /// <summary>Assembly name for the temporary Razor build project. Override to customize.</summary>
+    protected virtual string RazorAssemblyName => AssemblyNamePrefix;
+
+    /// <summary>Root namespace for the temporary Razor build project. Override to customize.</summary>
+    protected virtual string RazorRootNamespace => AssemblyNamePrefix;
 
     /// <summary>
-    /// Compiles a mixed set of <c>.cs</c> and <c>.razor</c> files by generating
-    /// a temporary Razor SDK project and invoking <c>dotnet build</c>.
-    /// Returns the path to the compiled assembly, or <see langword="null"/> on failure.
+    /// Compiles a mixed set of <c>.cs</c> and <c>.razor</c> files via a generated
+    /// <c>Microsoft.NET.Sdk.Razor</c> project + <c>dotnet build</c>.
     /// </summary>
-    /// <param name="csFiles">Plain C# script files.</param>
-    /// <param name="razorFiles">Blazor <c>.razor</c> component files.</param>
-    /// <param name="cssFiles">Optional CSS files to collect into the descriptor.</param>
-    /// <param name="result">Compilation result to populate with errors/warnings.</param>
-    /// <returns>Path to the compiled DLL, or <see langword="null"/> on failure.</returns>
-    private string? CompileWithDotnetBuild(
+    /// <returns>Path to the compiled DLL or <see langword="null"/> on failure.</returns>
+    protected string? CompileWithDotnetBuild(
         List<string> csFiles,
         List<string> razorFiles,
         List<string> cssFiles,
-        ShellCompilationResult result)
+        TResult result)
     {
+        if (!EnableRazor)
+            throw new InvalidOperationException("CompileWithDotnetBuild called but EnableRazor is false.");
+
         var gen = Interlocked.Increment(ref _generation);
-        var projectDir = GetOrCreateRazorProjectDir(gen);
+        var projectDir = GetOrCreateRazorProjectDir();
 
         try
         {
@@ -53,8 +57,8 @@ public sealed partial class RuntimeShellCompiler
                 }
             }
 
-            var csprojPath = Path.Combine(projectDir, "EditorShells.csproj");
-            File.WriteAllText(csprojPath, GenerateProjectFile(gen));
+            var csprojPath = Path.Combine(projectDir, $"{RazorAssemblyName}.csproj");
+            File.WriteAllText(csprojPath, GenerateProjectFile());
 
             var (exitCode, stdout, stderr) = RunDotnetBuild(projectDir);
 
@@ -63,29 +67,27 @@ public sealed partial class RuntimeShellCompiler
                 ParseBuildErrors(stderr + "\n" + stdout, result);
                 if (result.Errors.Count == 0)
                 {
-                    // Fallback when output didn't match the standard error format.
-                    result.Errors.Add(new ShellCompilationError
+                    result.Errors.Add(new RuntimeCompilationError
                     {
                         FileName = "dotnet build",
-                        Message = $"Build failed (exit code {exitCode}):\n{stderr}"
+                        Message = $"Build failed (exit code {exitCode}):\n{stderr}",
                     });
                 }
-
                 result.Success = false;
                 result.Message = $"Razor build failed with {result.Errors.Count} error(s).";
                 return null;
             }
 
-            var outputDll = Path.Combine(projectDir, "bin", "Debug", "net10.0", "EditorShells.dll");
+            var outputDll = Path.Combine(projectDir, "bin", "Debug", "net10.0", $"{RazorAssemblyName}.dll");
             if (!File.Exists(outputDll))
-                outputDll = Path.Combine(projectDir, "bin", "Release", "net10.0", "EditorShells.dll");
+                outputDll = Path.Combine(projectDir, "bin", "Release", "net10.0", $"{RazorAssemblyName}.dll");
 
             if (!File.Exists(outputDll))
             {
-                result.Errors.Add(new ShellCompilationError
+                result.Errors.Add(new RuntimeCompilationError
                 {
                     FileName = "dotnet build",
-                    Message = "Build succeeded but output DLL was not found."
+                    Message = "Build succeeded but output DLL was not found.",
                 });
                 result.Success = false;
                 result.Message = "Build output not found.";
@@ -96,10 +98,10 @@ public sealed partial class RuntimeShellCompiler
         }
         catch (Exception ex)
         {
-            result.Errors.Add(new ShellCompilationError
+            result.Errors.Add(new RuntimeCompilationError
             {
                 FileName = "dotnet build",
-                Message = $"Build process failed: {ex.Message}"
+                Message = $"Build process failed: {ex.Message}",
             });
             result.Success = false;
             result.Message = $"Build process exception: {ex.Message}";
@@ -107,24 +109,16 @@ public sealed partial class RuntimeShellCompiler
         }
     }
 
-    /// <summary>
-    /// Creates (or reuses) a temporary directory for the Razor build project.
-    /// </summary>
-    private string GetOrCreateRazorProjectDir(int gen)
+    private string GetOrCreateRazorProjectDir()
     {
         if (_razorProjectDir != null && Directory.Exists(_razorProjectDir))
             return _razorProjectDir;
-
-        _razorProjectDir = Path.Combine(Path.GetTempPath(), "EditorShells_RazorBuild");
+        _razorProjectDir = Path.Combine(Path.GetTempPath(), $"{RazorAssemblyName}_RazorBuild");
         Directory.CreateDirectory(_razorProjectDir);
         return _razorProjectDir;
     }
 
-    /// <summary>
-    /// Generates a <c>.csproj</c> file content for the temporary Razor build project.
-    /// Uses <c>Microsoft.NET.Sdk.Razor</c> for full Blazor component compilation support.
-    /// </summary>
-    private string GenerateProjectFile(int gen)
+    private string GenerateProjectFile()
     {
         var sb = new StringBuilder();
         sb.AppendLine("""<Project Sdk="Microsoft.NET.Sdk.Razor">""");
@@ -133,19 +127,16 @@ public sealed partial class RuntimeShellCompiler
         sb.AppendLine("    <ImplicitUsings>enable</ImplicitUsings>");
         sb.AppendLine("    <Nullable>enable</Nullable>");
         sb.AppendLine("    <NoWarn>$(NoWarn);CS1591</NoWarn>");
-        sb.AppendLine($"    <AssemblyName>EditorShells</AssemblyName>");
-        sb.AppendLine($"    <RootNamespace>EditorScripts</RootNamespace>");
+        sb.AppendLine($"    <AssemblyName>{RazorAssemblyName}</AssemblyName>");
+        sb.AppendLine($"    <RootNamespace>{RazorRootNamespace}</RootNamespace>");
         sb.AppendLine("  </PropertyGroup>");
         sb.AppendLine();
-
-        // Framework reference for Blazor components
         sb.AppendLine("  <ItemGroup>");
         sb.AppendLine("""    <FrameworkReference Include="Microsoft.AspNetCore.App" />""");
         sb.AppendLine("  </ItemGroup>");
         sb.AppendLine();
 
-        // Assembly references (non-framework assemblies added by the user)
-        var userRefs = GetUserAssemblyPaths();
+        var userRefs = _userAssemblyPaths.Where(File.Exists).ToList();
         if (userRefs.Count > 0)
         {
             sb.AppendLine("  <ItemGroup>");
@@ -163,24 +154,6 @@ public sealed partial class RuntimeShellCompiler
         return sb.ToString();
     }
 
-    /// <summary>
-    /// Extracts the file paths of user-added assembly references (non-framework assemblies
-    /// like Editor.Shell, Engine.Common, etc.) for inclusion in the temporary project.
-    /// </summary>
-    private List<string> GetUserAssemblyPaths()
-    {
-        var paths = new List<string>();
-        foreach (var asmRef in _userAssemblyPaths)
-        {
-            if (File.Exists(asmRef))
-                paths.Add(asmRef);
-        }
-        return paths;
-    }
-
-    /// <summary>
-    /// Runs <c>dotnet build</c> on the temporary project and captures stdout/stderr.
-    /// </summary>
     private static (int ExitCode, string Stdout, string Stderr) RunDotnetBuild(string projectDir)
     {
         var psi = new ProcessStartInfo
@@ -198,33 +171,25 @@ public sealed partial class RuntimeShellCompiler
         var stdout = proc.StandardOutput.ReadToEnd();
         var stderr = proc.StandardError.ReadToEnd();
         proc.WaitForExit(60_000);
-
         return (proc.ExitCode, stdout, stderr);
     }
 
-    /// <summary>
-    /// Parses <c>dotnet build</c> output for error messages in the standard
-    /// <c>file(line,col): error CODE: message</c> format.
-    /// </summary>
-    private static void ParseBuildErrors(string output, ShellCompilationResult result)
+    private static void ParseBuildErrors(string output, TResult result)
     {
         foreach (var line in output.Split('\n'))
         {
             var trimmed = line.Trim();
             if (string.IsNullOrEmpty(trimmed)) continue;
 
-            // Match: path(line,col): error CS1234: message
             if (trimmed.Contains(": error "))
             {
                 var errorIdx = trimmed.IndexOf(": error ", StringComparison.Ordinal);
                 var prefix = trimmed[..errorIdx];
-                var message = trimmed[(errorIdx + 2)..]; // "error CS1234: message"
+                var message = trimmed[(errorIdx + 2)..];
 
                 var fileName = prefix;
                 var errorLine = 0;
                 var errorCol = 0;
-
-                // Extract (line,col) from prefix
                 var parenIdx = prefix.LastIndexOf('(');
                 if (parenIdx >= 0)
                 {
@@ -235,7 +200,7 @@ public sealed partial class RuntimeShellCompiler
                     if (parts.Length >= 2) int.TryParse(parts[1], out errorCol);
                 }
 
-                result.Errors.Add(new ShellCompilationError
+                result.Errors.Add(new RuntimeCompilationError
                 {
                     FileName = Path.GetFileName(fileName),
                     Message = message,
@@ -246,16 +211,11 @@ public sealed partial class RuntimeShellCompiler
             else if (trimmed.Contains(": warning "))
             {
                 var warnIdx = trimmed.IndexOf(": warning ", StringComparison.Ordinal);
-                var message = trimmed[(warnIdx + 2)..];
-                result.Warnings.Add(message);
+                result.Warnings.Add(trimmed[(warnIdx + 2)..]);
             }
         }
     }
 
-    /// <summary>
-    /// Returns the relative path of a script file within its parent script directory.
-    /// Falls back to just the file name if no matching directory is found.
-    /// </summary>
     private string GetRelativeScriptPath(string filePath)
     {
         var fullPath = Path.GetFullPath(filePath);
@@ -263,10 +223,9 @@ public sealed partial class RuntimeShellCompiler
         {
             var fullDir = Path.GetFullPath(dir);
             if (fullPath.StartsWith(fullDir, StringComparison.OrdinalIgnoreCase))
-            {
-                return fullPath[(fullDir.Length + 1)..]; // strip the directory prefix + separator
-            }
+                return fullPath[(fullDir.Length + 1)..];
         }
         return Path.GetFileName(filePath);
     }
 }
+
