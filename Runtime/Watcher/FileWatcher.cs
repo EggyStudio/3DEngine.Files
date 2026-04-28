@@ -20,7 +20,7 @@ public readonly record struct FileChangedEvent(
 /// </summary>
 /// <remarks>
 /// <para>
-/// Extracted from <c>ShellCompiler.FileWatcher</c> as a reusable utility. Multiple parts of the
+/// Extracted from <c>RuntimeShellCompiler.FileWatcher</c> as a reusable utility. Multiple parts of the
 /// engine and editor can share this instead of duplicating <see cref="FileSystemWatcher"/> boilerplate.
 /// </para>
 /// <para>
