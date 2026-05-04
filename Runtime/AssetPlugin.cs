@@ -42,6 +42,16 @@ public sealed class AssetPlugin : IPlugin
 {
     private static readonly ILogger Logger = Log.Category("Engine.Assets");
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// Foundational: many other plugins (textures, materials, scenes, models, webview,
+    /// renderer-shader-loader) rely on <see cref="AssetServer"/>. Marking this plugin
+    /// <see cref="PluginOrder.Foundation"/> guarantees it builds first when registered as
+    /// part of an <see cref="IPluginGroup"/> (e.g. <c>DefaultPlugins</c>), so consumers do
+    /// not need to declare an explicit <see cref="IPlugin.Dependencies"/> entry on it.
+    /// </remarks>
+    public int Order => PluginOrder.Foundation;
+
     /// <summary>
     /// Root directory for the default <see cref="FileAssetReader"/>.
     /// Defaults to <c>{AppContext.BaseDirectory}/source</c>.
