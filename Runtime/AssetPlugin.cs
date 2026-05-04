@@ -75,6 +75,15 @@ public sealed class AssetPlugin : IPlugin
         // Create the AssetServer
         var server = new AssetServer(WorkerThreads);
 
+        // In-memory source: registered first so synthetic paths (embedded glTF textures,
+        // future extracted-from-archive entries) shadow any same-named file on disk.
+        // The reader is a singleton over InMemoryAssetReader.ProcessWideStore so importers
+        // running on background worker threads can publish bytes without needing a World
+        // reference. Also exposed as a resource for callers that prefer the world API.
+        var inMemory = new InMemoryAssetReader();
+        app.World.InsertResource(inMemory);
+        server.AddSource(inMemory, "InMemory");
+
         // Add default filesystem source
         var dir = AssetDirectory ?? Path.Combine(AppContext.BaseDirectory, "source");
         if (Directory.Exists(dir) || AssetDirectory is not null)
