@@ -16,6 +16,8 @@ public abstract partial class RuntimeAssemblyCompiler<TResult>
 
     /// <summary>Adds an assembly's metadata to the compilation reference set.</summary>
     /// <remarks>Skipped silently if <see cref="Assembly.Location"/> is empty (single-file deployment).</remarks>
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("SingleFile", "IL3000",
+        Justification = "Empty Location is handled (skipped) below; not single-file in our deployment.")]
     public RuntimeAssemblyCompiler<TResult> AddReference(Assembly assembly)
     {
         var location = assembly.Location;
